@@ -1,0 +1,46 @@
+name: CI - MLflow Training
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run actions/checkout@v3
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.12.7
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12.7"
+
+      - name: Check Env
+        run: |
+          python --version
+          pip --version
+
+      - name: Install dependencies
+        run: |
+          pip install mlflow==2.19.0 scikit-learn pandas numpy
+
+      - name: Run mlflow project
+        run: |
+          mlflow run MLProject/ --env-manager=local
+
+      - name: Get latest MLflow run_id
+        run: |
+          python - <<'PYEOF'
+          import mlflow
+          client = mlflow.tracking.MlflowClient()
+          experiments = client.search_experiments()
+          for exp in experiments:
+              runs = client.search_runs(exp.experiment_id, order_by=["start_time DESC"], max_results=1)
+              if runs:
+                  print(f"Experiment: {exp.name}")
+                  print(f"Latest Run ID: {runs[0].info.run_id}")
+                  print(f"Status: {runs[0].info.status}")
+          PYEOF
